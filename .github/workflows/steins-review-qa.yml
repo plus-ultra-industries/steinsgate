@@ -1,0 +1,58 @@
+name: Steins Review + QA
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reviewer agent output
+        run: |
+          PROMPT="$(cat darkfactory/prompts/reviewer.md)"
+          if command -v codex >/dev/null 2>&1; then
+            codex exec --full-auto "$PROMPT\n\nPR #${{ github.event.pull_request.number }}"
+          else
+            echo "Reviewer fallback: codex CLI not found."
+          fi
+      - name: Comment PR (bootstrap)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: 'Reviewer stage executed (bootstrap). Next: enforce PASS/NEEDS_FIX labeling contract.'
+            });
+
+  qa:
+    needs: review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: QA agent output
+        run: |
+          PROMPT="$(cat darkfactory/prompts/qa.md)"
+          if command -v codex >/dev/null 2>&1; then
+            codex exec --full-auto "$PROMPT\n\nPR #${{ github.event.pull_request.number }}"
+          else
+            echo "QA fallback: codex CLI not found."
+          fi
+      - name: Comment PR (bootstrap)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: 'QA stage executed (bootstrap). Next: enforce QA_PASS/QA_FAIL gate labels/checks.'
+            });
