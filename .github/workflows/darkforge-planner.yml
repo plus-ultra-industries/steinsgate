@@ -1,0 +1,19 @@
+name: DarkForge Planner (Consumer)
+
+on:
+  issues:
+    types: [opened, labeled]
+  workflow_dispatch:
+    inputs:
+      epic_number:
+        description: "Epic issue number"
+        required: true
+        type: number
+
+jobs:
+  planner:
+    if: ${{ github.event_name != 'issues' || contains(github.event.issue.title, '[EPIC]') || contains(join(github.event.issue.labels.*.name, ','), 'df:intake') }}
+    uses: plus-ultra-industries/darkforge/.github/workflows/planner.yml@main
+    with:
+      epic_number: ${{ github.event.inputs.epic_number || github.event.issue.number }}
+    secrets: inherit
