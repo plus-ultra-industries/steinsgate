@@ -8,8 +8,9 @@ on:
         required: true
 
 permissions:
-  contents: read
-  issues: read
+  contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
   implement:
@@ -35,3 +36,15 @@ jobs:
         run: |
           test -f darkfactory/runtime/issue.md
           echo "Issue context fetched successfully"
+
+      - name: Run Codex implementation
+        run: |
+          if ! command -v codex >/dev/null 2>&1; then
+            echo "codex CLI is not installed on this runner" >&2
+            exit 1
+          fi
+          PROMPT="You are the Engineer agent. Implement the GitHub issue in darkfactory/runtime/issue.md with minimal, focused changes."
+          CONTEXT="$(cat darkfactory/runtime/issue.md)"
+          codex exec --full-auto "$PROMPT
+
+$CONTEXT"
