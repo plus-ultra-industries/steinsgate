@@ -1,0 +1,56 @@
+name: Steins Task Sync (from Architect Artifact)
+
+on:
+  workflow_dispatch:
+    inputs:
+      epic_number:
+        description: "Epic issue number"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create/update task issues from architect JSON block
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const epic = Number('${{ github.event.inputs.epic_number }}');
+            const path = `darkfactory/artifacts/epic-${epic}/architect.md`;
+            const md = fs.readFileSync(path, 'utf8');
+            const m = md.match(/```json\n([\s\S]*?)\n```/);
+            if (!m) throw new Error('No JSON block found in architect.md');
+            const graph = JSON.parse(m[1]);
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            for (const task of graph.tasks || []) {
+              const marker = `DarkForge-Task-ID: ${task.id}`;
+              const title = `[TASK] ${task.title}`;
+              const body = [
+                `Parent Epic: #${epic}`,
+                marker,
+                `Owner Role: ${task.owner_role || 'engineer'}`,
+                `Depends-On: ${(task.depends_on || []).join(', ') || 'none'}`,
+                '',
+                '## Acceptance Criteria',
+                ...((task.acceptance || []).map(a => `- ${a}`))
+              ].join('\n');
+
+              const issues = await github.paginate(github.rest.issues.listForRepo, { owner, repo, state: 'open', per_page: 100 });
+              const existing = issues.find(i => !i.pull_request && (i.body || '').includes(marker));
+              const labels = ['df:task', (task.depends_on || []).length ? 'df:blocked' : 'df:ready'];
+              if (existing) {
+                await github.rest.issues.update({ owner, repo, issue_number: existing.number, title, body });
+                await github.rest.issues.setLabels({ owner, repo, issue_number: existing.number, labels });
+              } else {
+                await github.rest.issues.create({ owner, repo, title, body, labels });
+              }
+            }

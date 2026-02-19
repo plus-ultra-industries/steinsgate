@@ -1,0 +1,118 @@
+name: Steins Bootstrap (Prompt-Native)
+
+on:
+  workflow_dispatch:
+    inputs:
+      epic_number:
+        description: "Epic issue number"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  pm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch epic
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const issueNumber = Number('${{ github.event.inputs.epic_number }}');
+            const { data: issue } = await github.rest.issues.get({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issueNumber });
+            fs.mkdirSync('darkfactory/runtime', { recursive: true });
+            fs.writeFileSync('darkfactory/runtime/epic.md', `# Epic #${issue.number}: ${issue.title}\n\n${issue.body || ''}`);
+      - name: Run PM agent command
+        run: |
+          mkdir -p darkfactory/artifacts/epic-${{ github.event.inputs.epic_number }}
+          PROMPT="$(cat darkfactory/prompts/pm.md)"
+          CONTEXT="$(cat darkfactory/runtime/epic.md)"
+          if command -v codex >/dev/null 2>&1; then
+            codex exec --full-auto "$PROMPT
+
+$CONTEXT" > darkfactory/artifacts/epic-${{ github.event.inputs.epic_number }}/pm.md
+          else
+            cat > darkfactory/artifacts/epic-${{ github.event.inputs.epic_number }}/pm.md <<'OUT'
+# PM Output (bootstrap fallback)
+Agent CLI (codex) not found in runner. Install/configure coding agent CLI to enable true autonomous planning.
+OUT
+          fi
+      - name: Commit PM artifact
+        run: |
+          git config user.name "steins-bot"
+          git config user.email "steins-bot@users.noreply.github.com"
+          git add darkfactory/artifacts/epic-${{ github.event.inputs.epic_number }}/pm.md
+          git diff --cached --quiet || git commit -m "feat(pm): epic #${{ github.event.inputs.epic_number }}"
+          git push || true
+
+  tpm:
+    needs: pm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run TPM agent command
+        run: |
+          PROMPT="$(cat darkfactory/prompts/tpm.md)"
+          CONTEXT="$(cat darkfactory/artifacts/epic-${{ github.event.inputs.epic_number }}/pm.md)"
+          if command -v codex >/dev/null 2>&1; then
+            codex exec --full-auto "$PROMPT
+
+$CONTEXT" > darkfactory/artifacts/epic-${{ github.event.inputs.epic_number }}/tpm.md
+          else
+            cat > darkfactory/artifacts/epic-${{ github.event.inputs.epic_number }}/tpm.md <<'OUT'
+# TPM Output (bootstrap fallback)
+Agent CLI (codex) not found in runner.
+OUT
+          fi
+      - name: Commit TPM artifact
+        run: |
+          git config user.name "steins-bot"
+          git config user.email "steins-bot@users.noreply.github.com"
+          git add darkfactory/artifacts/epic-${{ github.event.inputs.epic_number }}/tpm.md
+          git diff --cached --quiet || git commit -m "feat(tpm): epic #${{ github.event.inputs.epic_number }}"
+          git push || true
+
+  architect:
+    needs: tpm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Architect agent command
+        run: |
+          PROMPT="$(cat darkfactory/prompts/architect.md)"
+          CONTEXT="$(cat darkfactory/artifacts/epic-${{ github.event.inputs.epic_number }}/pm.md)
+
+$(cat darkfactory/artifacts/epic-${{ github.event.inputs.epic_number }}/tpm.md)"
+          if command -v codex >/dev/null 2>&1; then
+            codex exec --full-auto "$PROMPT
+
+$CONTEXT" > darkfactory/artifacts/epic-${{ github.event.inputs.epic_number }}/architect.md
+          else
+            cat > darkfactory/artifacts/epic-${{ github.event.inputs.epic_number }}/architect.md <<'OUT'
+# Architect Output (bootstrap fallback)
+```json
+{"tasks":[{"id":"E1-T1","title":"Implement core QA run","depends_on":[],"parallelizable":false,"owner_role":"engineer","acceptance":["Run can be triggered"]}]}
+```
+OUT
+          fi
+      - name: Commit Architect artifact
+        run: |
+          git config user.name "steins-bot"
+          git config user.email "steins-bot@users.noreply.github.com"
+          git add darkfactory/artifacts/epic-${{ github.event.inputs.epic_number }}/architect.md
+          git diff --cached --quiet || git commit -m "feat(architect): epic #${{ github.event.inputs.epic_number }}"
+          git push || true
+      - name: Comment epic
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number('${{ github.event.inputs.epic_number }}'),
+              body: 'Steins bootstrap complete: PM/TPM/Architect artifacts generated in `darkfactory/artifacts/epic-${{ github.event.inputs.epic_number }}`.'
+            });
