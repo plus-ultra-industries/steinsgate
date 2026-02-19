@@ -1,6 +1,9 @@
 name: Steins Task Sync (from Architect Artifact)
 
 on:
+  workflow_run:
+    workflows: ["Steins Bootstrap"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       epic_number:
@@ -13,6 +16,7 @@ permissions:
 
 jobs:
   sync:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,8 +25,22 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const epic = Number('${{ github.event.inputs.epic_number }}');
-            const path = `darkfactory/artifacts/epic-${epic}/architect.md`;
+            const inputEpic = '${{ github.event.inputs.epic_number }}';
+            let epic = inputEpic ? Number(inputEpic) : null;
+            let path = epic ? `darkfactory/artifacts/epic-${epic}/architect.md` : null;
+            if (!path || !fs.existsSync(path)) {
+              const base = 'darkfactory/artifacts';
+              const candidates = fs.existsSync(base)
+                ? fs.readdirSync(base)
+                    .filter(d => d.startsWith('epic-'))
+                    .map(d => ({ d, m: fs.statSync(`${base}/${d}`).mtimeMs }))
+                    .sort((a, b) => b.m - a.m)
+                : [];
+              if (!candidates.length) throw new Error('No epic artifacts found. Run Steins Bootstrap first.');
+              const latest = candidates[0].d;
+              epic = Number(latest.replace('epic-', ''));
+              path = `${base}/${latest}/architect.md`;
+            }
             const md = fs.readFileSync(path, 'utf8');
             const m = md.match(/```json\n([\s\S]*?)\n```/);
             if (!m) throw new Error('No JSON block found in architect.md');
