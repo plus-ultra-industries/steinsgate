@@ -3,10 +3,12 @@
 Steins is an AI QA copilot SaaS (Elixir + React).
 
 ## Current status
-Initial app skeleton is in place:
+MVP backend/frontend slice is in place:
 - Elixir backend with Plug/Cowboy endpoint
 - React frontend bootstrapped from `priv/static/app.js`
-- Health endpoint and first API stub
+- Project onboarding (create/list projects)
+- QA run trigger endpoint with generated findings
+- Markdown report export endpoint
 
 ## Run locally
 Prerequisites:
