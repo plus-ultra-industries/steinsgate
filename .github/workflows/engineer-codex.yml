@@ -1,9 +1,37 @@
 name: Engineer Codex
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to implement
+        required: true
+
+permissions:
+  contents: read
+  issues: read
 
 jobs:
-  test:
+  implement:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "engineer-codex baseline dispatch works"
+      - uses: actions/checkout@v4
+
+      - name: Fetch issue context
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const issueNumber = Number('${{ github.event.inputs.issue_number }}');
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+            fs.mkdirSync('darkfactory/runtime', { recursive: true });
+            fs.writeFileSync('darkfactory/runtime/issue.md', `# Issue #${issue.number}: ${issue.title}\n\n${issue.body || ''}`);
+
+      - name: Validate context file
+        run: |
+          test -f darkfactory/runtime/issue.md
+          echo "Issue context fetched successfully"
