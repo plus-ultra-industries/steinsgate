@@ -1,0 +1,77 @@
+{
+  "pm": {
+    "summary": "PM expansion for [EPIC] Steinsgate v1 — AI QA Copilot for Agencies (React + Inertia)",
+    "user_stories": [
+      "As an agency QA lead, I can run automated checks and review reproducible findings."
+    ],
+    "acceptance_criteria": [
+      "Project can be created",
+      "Run can be triggered",
+      "Findings include screenshots"
+    ]
+  },
+  "tpm": {
+    "proposals": [
+      {
+        "name": "Phoenix + Oban + Playwright worker",
+        "tradeoffs": "Fast iteration, clear separation of orchestration vs browser execution"
+      }
+    ],
+    "recommendation": "Phoenix + Oban + Playwright worker"
+  },
+  "architect": {
+    "tasks": [
+      {
+        "id": "E1-T1",
+        "title": "Core QA run pipeline (project -> run -> findings)",
+        "depends_on": [],
+        "parallelizable": false,
+        "owner_role": "engineer",
+        "acceptance": [
+          "Can trigger run manually",
+          "Findings persisted"
+        ]
+      },
+      {
+        "id": "E1-T2",
+        "title": "Browser checks + screenshot evidence capture",
+        "depends_on": [
+          "E1-T1"
+        ],
+        "parallelizable": true,
+        "owner_role": "engineer",
+        "acceptance": [
+          "Failure screenshots captured",
+          "Repro steps generated"
+        ]
+      },
+      {
+        "id": "E1-T3",
+        "title": "QA report + markdown export",
+        "depends_on": [
+          "E1-T1"
+        ],
+        "parallelizable": true,
+        "owner_role": "engineer",
+        "acceptance": [
+          "Run summary view exists",
+          "Markdown export works"
+        ]
+      },
+      {
+        "id": "E1-T4",
+        "title": "Review/fix loop + merge gate integration",
+        "depends_on": [
+          "E1-T2",
+          "E1-T3"
+        ],
+        "parallelizable": false,
+        "owner_role": "engineer",
+        "acceptance": [
+          "Needs-fix loop works",
+          "Ready-to-merge signal emitted"
+        ]
+      }
+    ]
+  }
+}
