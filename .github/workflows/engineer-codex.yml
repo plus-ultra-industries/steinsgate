@@ -1,0 +1,100 @@
+name: Engineer Codex
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue number to implement"
+        required: true
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  implement:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.label.name == 'implement' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve issue number
+        id: meta
+        run: |
+          ISSUE_NUMBER="${{ github.event.inputs.issue_number || github.event.issue.number }}"
+          echo "issue_number=$ISSUE_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch issue context
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const issueNumber = Number('${{ steps.meta.outputs.issue_number }}');
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+            fs.mkdirSync('darkfactory/runtime', { recursive: true });
+            fs.writeFileSync('darkfactory/runtime/issue.md', `# Issue #${issue.number}: ${issue.title}\n\n${issue.body || ''}`);
+
+      - name: Run Codex to implement issue
+        run: |
+          if ! command -v codex >/dev/null 2>&1; then
+            echo "codex CLI is not installed on this runner" >&2
+            exit 1
+          fi
+
+          ISSUE='${{ steps.meta.outputs.issue_number }}'
+          BRANCH="codex/issue-${ISSUE}"
+
+          git config user.name "steins-bot"
+          git config user.email "steins-bot@users.noreply.github.com"
+          git checkout -b "$BRANCH" || git checkout "$BRANCH"
+
+          PROMPT="You are the Engineer agent. Implement the GitHub issue in darkfactory/runtime/issue.md with minimal, focused changes. Add/update tests if relevant."
+          CONTEXT="$(cat darkfactory/runtime/issue.md)"
+
+          codex exec --full-auto "$PROMPT
+
+$CONTEXT"
+
+      - name: Commit and push
+        run: |
+          ISSUE='${{ steps.meta.outputs.issue_number }}'
+          BRANCH="codex/issue-${ISSUE}"
+          git add -A
+          git diff --cached --quiet || git commit -m "feat: implement issue #${ISSUE} via codex"
+          git push -u origin "$BRANCH"
+
+      - name: Open PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE='${{ steps.meta.outputs.issue_number }}'
+          BRANCH="codex/issue-${ISSUE}"
+          if [ "$(gh pr list --head "$BRANCH" --json number --jq 'length')" = "0" ]; then
+            gh pr create --base main --head "$BRANCH" --title "[Issue #${ISSUE}] Codex implementation" --body "Automated implementation by Engineer Codex workflow for issue #${ISSUE}."
+          fi
+
+      - name: Comment issue with result
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = Number('${{ steps.meta.outputs.issue_number }}');
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: `${context.repo.owner}:codex/issue-${issueNumber}`,
+              state: 'open'
+            });
+            const pr = prs.data[0];
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: `Engineer Codex workflow finished. PR: ${pr ? pr.html_url : 'not found'}`
+            });
