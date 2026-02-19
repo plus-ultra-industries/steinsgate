@@ -8,7 +8,7 @@ on:
       epic_number:
         description: "Epic issue number"
         required: true
-        type: number
+        type: string
 
 jobs:
   planner:
