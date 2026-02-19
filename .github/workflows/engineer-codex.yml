@@ -15,9 +15,9 @@ jobs:
   implement:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - name: Fetch issue context
+      - name: Build prompt from issue
         uses: actions/github-script@v7
         with:
           script: |
@@ -28,18 +28,22 @@ jobs:
               repo: context.repo.repo,
               issue_number: issueNumber
             });
+            const prompt = [
+              'You are the Engineer agent.',
+              'Implement this issue with minimal, focused code changes.',
+              'Add/update tests if relevant.',
+              '',
+              `Issue #${issue.number}: ${issue.title}`,
+              issue.body || ''
+            ].join('\n');
             fs.mkdirSync('darkfactory/runtime', { recursive: true });
-            fs.writeFileSync('darkfactory/runtime/issue.md', `# Issue #${issue.number}: ${issue.title}\n\n${issue.body || ''}`);
+            fs.writeFileSync('darkfactory/runtime/prompt.md', prompt);
 
-      - name: Validate context file
-        run: |
-          test -f darkfactory/runtime/issue.md
-          echo "Issue context fetched successfully"
-
-      - name: Run Codex command
-        run: |
-          if ! command -v codex >/dev/null 2>&1; then
-            echo "codex CLI is not installed on this runner" >&2
-            exit 1
-          fi
-          codex exec --full-auto "$(cat darkfactory/runtime/issue.md)"
+      - name: Run Codex (official action)
+        id: codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: darkfactory/runtime/prompt.md
+          sandbox: workspace-write
+          safety-strategy: drop-sudo
