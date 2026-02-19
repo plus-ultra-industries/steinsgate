@@ -1,0 +1,18 @@
+defmodule SteinsWeb.Layout do
+  def index_html do
+    """
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset=\"utf-8\" />
+        <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />
+        <title>Steins QA</title>
+      </head>
+      <body>
+        <div id=\"app\"></div>
+        <script type=\"module\" src=\"/app.js\"></script>
+      </body>
+    </html>
+    """
+  end
+end

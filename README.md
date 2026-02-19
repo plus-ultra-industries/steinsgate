@@ -1,13 +1,33 @@
-# Steinsgate (DarkForge Demo Consumer)
+# Steinsgate
 
-This repo demonstrates consuming reusable DarkForge workflows from:
-`plus-ultra-industries/darkforge`
+Steins is an AI QA copilot SaaS (Elixir + React).
 
-## Installed
-- `.github/workflows/darkforge-orchestrator.yml`
-- `.github/workflows/darkforge-policy-gate.yml`
-- `.github/darkfactory.yml`
-- `darkfactory/tasks/sample-epic.json`
+## Current status
+Initial app skeleton is in place:
+- Elixir backend with Plug/Cowboy endpoint
+- React frontend bootstrapped from `priv/static/app.js`
+- Health endpoint and first API stub
 
-## Demo
-Run the orchestrator workflow and inspect task graph transitions from blocked -> ready.
+## Run locally
+Prerequisites:
+- Elixir 1.16+
+- Erlang/OTP 26+
+
+```bash
+mix setup
+mix run --no-halt
+```
+
+Open: http://localhost:4000
+
+## Endpoints
+- `GET /health` -> `ok`
+- `GET /` -> React app shell
+- `GET /inertia` -> initial page payload format
+- `POST /api/projects` -> project create stub
+
+## Next build steps
+1. Add real project/run schemas and persistence (Postgres + Ecto).
+2. Implement Inertia protocol adapter and page routing.
+3. Build project list + run trigger UI.
+4. Add browser-check worker integration.
