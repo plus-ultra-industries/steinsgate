@@ -1,0 +1,36 @@
+name: DarkForge Bootstrap LLM Flow
+
+on:
+  workflow_dispatch:
+    inputs:
+      epic_number:
+        description: "Epic issue number"
+        required: true
+        type: string
+
+jobs:
+  pm:
+    uses: plus-ultra-industries/darkforge/.github/workflows/llm-stage.yml@main
+    with:
+      stage: pm
+      issue_number: ${{ github.event.inputs.epic_number }}
+      output_path: darkfactory/artifacts/epic-${{ github.event.inputs.epic_number }}/pm.md
+    secrets: inherit
+
+  tpm:
+    needs: pm
+    uses: plus-ultra-industries/darkforge/.github/workflows/llm-stage.yml@main
+    with:
+      stage: tpm
+      issue_number: ${{ github.event.inputs.epic_number }}
+      output_path: darkfactory/artifacts/epic-${{ github.event.inputs.epic_number }}/tpm.md
+    secrets: inherit
+
+  architect:
+    needs: tpm
+    uses: plus-ultra-industries/darkforge/.github/workflows/llm-stage.yml@main
+    with:
+      stage: architect
+      issue_number: ${{ github.event.inputs.epic_number }}
+      output_path: darkfactory/artifacts/epic-${{ github.event.inputs.epic_number }}/architect.md
+    secrets: inherit
