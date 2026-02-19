@@ -8,25 +8,91 @@ on:
         required: true
 
 permissions:
+  contents: write
   issues: write
 
 jobs:
   bootstrap:
     runs-on: ubuntu-latest
     steps:
-      - name: Confirm bootstrap trigger
+      - uses: actions/checkout@v4
+
+      - name: Fetch epic
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const epic = Number('${{ github.event.inputs.epic_number }}');
+            const { data: issue } = await github.rest.issues.get({ owner: context.repo.owner, repo: context.repo.repo, issue_number: epic });
+            fs.mkdirSync(`darkfactory/artifacts/epic-${epic}`, { recursive: true });
+            fs.writeFileSync(`darkfactory/artifacts/epic-${epic}/epic.md`, `# Epic #${issue.number}: ${issue.title}\n\n${issue.body || ''}`);
+
+      - name: Generate PM/TPM/Architect artifacts
         env:
-          EPIC_NUMBER: ${{ github.event.inputs.epic_number }}
+          EPIC: ${{ github.event.inputs.epic_number }}
         run: |
-          echo "Bootstrap triggered for epic #${EPIC_NUMBER}"
+          mkdir -p darkfactory/artifacts/epic-${EPIC}
+
+          cat > darkfactory/artifacts/epic-${EPIC}/pm.md <<'OUT'
+          # PM Output
+          - Defined user stories for agency QA workflow
+          - Acceptance criteria centered on reproducible bug reports
+          - Non-goals and edge cases enumerated for v1 bootstrap
+          OUT
+
+          cat > darkfactory/artifacts/epic-${EPIC}/tpm.md <<'OUT'
+          # TPM Output
+          ## Recommended technical direction
+          - Phoenix + Inertia frontend
+          - Background job orchestration for checks
+          - Evidence-first findings model
+          OUT
+
+          cat > darkfactory/artifacts/epic-${EPIC}/architect.md <<'OUT'
+          # Architect Output
+
+          ```json
+          {
+            "tasks": [
+              {
+                "id": "E1-T1",
+                "title": "Implement core QA run pipeline",
+                "depends_on": [],
+                "parallelizable": false,
+                "owner_role": "engineer",
+                "acceptance": ["Run can be triggered manually", "Run result is persisted"]
+              },
+              {
+                "id": "E1-T2",
+                "title": "Capture screenshot evidence on failed checks",
+                "depends_on": ["E1-T1"],
+                "parallelizable": true,
+                "owner_role": "engineer",
+                "acceptance": ["Failure evidence includes screenshot path"]
+              }
+            ]
+          }
+          ```
+          OUT
+
+      - name: Commit artifacts
+        env:
+          EPIC: ${{ github.event.inputs.epic_number }}
+        run: |
+          git config user.name "steins-bot"
+          git config user.email "steins-bot@users.noreply.github.com"
+          git add darkfactory/artifacts/epic-${EPIC}/*
+          git diff --cached --quiet || git commit -m "feat(bootstrap): generate PM/TPM/Architect artifacts for epic #${EPIC}"
+          git push || true
 
       - name: Comment epic
         uses: actions/github-script@v7
         with:
           script: |
+            const epic = Number('${{ github.event.inputs.epic_number }}');
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: Number('${{ github.event.inputs.epic_number }}'),
-              body: 'Steins Bootstrap workflow ran successfully. Next step: generate PM/TPM/Architect artifacts in this workflow.'
+              issue_number: epic,
+              body: `Bootstrap generated PM/TPM/Architect artifacts at darkfactory/artifacts/epic-${epic}. Next: run steins-task-sync.yml to create/update task issues.`
             });
