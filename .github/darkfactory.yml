@@ -1,0 +1,13 @@
+version: 0.1
+name: steinsgate-demo
+
+uses:
+  darkforge_ref: plus-ultra-industries/darkforge/.github/workflows
+
+policy:
+  satisfaction_threshold: 0.90
+
+labels:
+  ready: df:ready
+  blocked: df:blocked
+  qa_pass: df:qa-pass

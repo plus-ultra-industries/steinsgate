@@ -1,0 +1,19 @@
+name: DarkForge Orchestrator (Consumer)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+  issues:
+    types: [opened, edited, labeled, unlabeled, reopened, closed]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  issue_comment:
+    types: [created]
+
+jobs:
+  orchestrate:
+    uses: plus-ultra-industries/darkforge/.github/workflows/orchestrator.yml@main
+    with:
+      task_graph_path: darkfactory/tasks/sample-epic.json
+    secrets: inherit
