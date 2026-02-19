@@ -8,9 +8,8 @@ on:
         required: true
 
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
+  contents: read
+  issues: read
 
 jobs:
   implement:
