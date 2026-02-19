@@ -31,16 +31,16 @@ jobs:
         env:
           EPIC: ${{ github.event.inputs.epic_number }}
         run: |
-          mkdir -p darkfactory/artifacts/epic-${EPIC}
+          mkdir -p "darkfactory/artifacts/epic-${EPIC}"
 
-          cat > darkfactory/artifacts/epic-${EPIC}/pm.md <<'OUT'
+          cat > "darkfactory/artifacts/epic-${EPIC}/pm.md" <<'OUT'
           # PM Output
           - Defined user stories for agency QA workflow
           - Acceptance criteria centered on reproducible bug reports
           - Non-goals and edge cases enumerated for v1 bootstrap
           OUT
 
-          cat > darkfactory/artifacts/epic-${EPIC}/tpm.md <<'OUT'
+          cat > "darkfactory/artifacts/epic-${EPIC}/tpm.md" <<'OUT'
           # TPM Output
           ## Recommended technical direction
           - Phoenix + Inertia frontend
@@ -48,7 +48,7 @@ jobs:
           - Evidence-first findings model
           OUT
 
-          cat > darkfactory/artifacts/epic-${EPIC}/architect.md <<'OUT'
+          cat > "darkfactory/artifacts/epic-${EPIC}/architect.md" <<'OUT'
           # Architect Output
 
           ```json
@@ -81,7 +81,7 @@ jobs:
         run: |
           git config user.name "steins-bot"
           git config user.email "steins-bot@users.noreply.github.com"
-          git add darkfactory/artifacts/epic-${EPIC}/*
+          git add "darkfactory/artifacts/epic-${EPIC}/"
           git diff --cached --quiet || git commit -m "feat(bootstrap): generate PM/TPM/Architect artifacts for epic #${EPIC}"
           git push || true
 
